@@ -6,7 +6,7 @@ public class Application {
     private static int proxyPort = 8443;
     public static void main(String[] args) throws Exception {
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1; i++) {
             HelloWorldClient client = new HelloWorldClient("localhost", proxyPort);
             try {
                 String user = "world_" + i;

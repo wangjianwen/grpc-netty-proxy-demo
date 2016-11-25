@@ -31,8 +31,8 @@ public final class ProxyStarter {
 
     private static final int LOCAL_PORT = Integer.parseInt(System.getProperty("localPort", "8443"));
     private static AtomicInteger robinSelector = new AtomicInteger(0);
-    private static String[] remote_hosts = {"localhost"};
-    private static int[] remote_ports = new int[]{10511};
+    private static String[] remote_hosts = {"localhost", "localhost", "localhost"};
+    private static int[] remote_ports = new int[]{10511, 10512, 10513};
 
     public static void main(String[] args) throws Exception {
 

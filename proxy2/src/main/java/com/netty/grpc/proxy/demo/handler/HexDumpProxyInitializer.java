@@ -65,7 +65,7 @@ public class HexDumpProxyInitializer extends ChannelInitializer<SocketChannel> {
                 remoteHost, remotePort, robinSelector);
 
         pipeline.addLast(new LoggingHandler(LogLevel.INFO));
-        pipeline.addLast(http2ConnectionHandler);
+        pipeline.addLast(new HexDumpProxyFrontendHandler(remoteHost, remotePort, robinSelector));
 
     }
 }
