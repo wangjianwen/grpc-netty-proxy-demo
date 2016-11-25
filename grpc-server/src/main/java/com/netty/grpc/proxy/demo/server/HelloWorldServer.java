@@ -1,4 +1,4 @@
-package com.netty.grpc.proxy.demo.handler.server;
+package com.netty.grpc.proxy.demo.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

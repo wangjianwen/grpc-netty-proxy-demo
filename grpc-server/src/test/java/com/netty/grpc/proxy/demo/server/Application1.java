@@ -1,4 +1,4 @@
-package com.netty.grpc.proxy.demo.handler.server;
+package com.netty.grpc.proxy.demo.server;
 
 
 public class Application1 {
