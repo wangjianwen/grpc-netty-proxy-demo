@@ -19,6 +19,7 @@
         <module>contract</module>
         <module>proxy</module>
         <module>proxy2</module>
+        <module>proxy3</module>
     </modules>
 
 

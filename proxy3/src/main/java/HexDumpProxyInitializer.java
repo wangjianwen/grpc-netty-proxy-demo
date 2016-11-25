@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-package com.netty.grpc.proxy.demo.handler;
+package io.netty.example.proxy;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -61,11 +61,11 @@ public class HexDumpProxyInitializer extends ChannelInitializer<SocketChannel> {
         DefaultHttp2ConnectionDecoder decoder = new DefaultHttp2ConnectionDecoder(connection, encoder, frameReader);
         Http2Settings settings = new Http2Settings();
 
-        DefaultHttp2ProxyHandler http2ConnectionHandler = new DefaultHttp2ProxyHandler(decoder, encoder,settings,
+        DefaultHttp2Handler http2ConnectionHandler = new DefaultHttp2Handler(decoder, encoder,settings,
                 remoteHost, remotePort, robinSelector);
 
         pipeline.addLast(new LoggingHandler(LogLevel.INFO));
-        //pipeline.addLast(new HexDumpProxyFrontendHandler(remoteHost, remotePort, robinSelector));
         pipeline.addLast(http2ConnectionHandler);
+
     }
 }
