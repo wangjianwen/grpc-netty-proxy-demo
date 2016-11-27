@@ -15,6 +15,8 @@
  */
 package com.netty.grpc.proxy.demo.handler;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,8 +31,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelOption;
-import io.netty.handler.codec.http2.Http2Exception;
-import io.netty.handler.codec.http2.Http2Flags;
+import io.netty.handler.codec.http2.*;
 
 import static io.netty.handler.codec.http2.Http2CodecUtil.readUnsignedInt;
 
@@ -41,6 +42,8 @@ public class HexDumpProxyFrontendHandler extends ChannelInboundHandlerAdapter {
     private Channel[] outboundChannel;
     private ConcurrentMap<Integer, Integer> streamIdToChannelIndexMap = new ConcurrentHashMap<Integer, Integer>();
     private final AtomicInteger counter;
+    private final Http2ConnectionEncoder encoder;
+    private final Http2ConnectionDecoder decoder;
 
     // As we use inboundChannel.eventLoop() when buildling the Bootstrap this does not need to be volatile as
     // the outboundChannel will use the same EventLoop (and therefore Thread) as the inboundChannel.
@@ -50,6 +53,12 @@ public class HexDumpProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         this.remotePort = remotePort;
         this.counter = counter;
         outboundChannel = new Channel[remoteHost.length];
+
+        DefaultHttp2HeadersDecoder headersDecoder = new DefaultHttp2HeadersDecoder();
+        DefaultHttp2Connection connection = new DefaultHttp2Connection(true);
+        connection.local().flowController(new DefaultHttp2LocalFlowController(connection, 0.5F, true));
+        encoder = new DefaultHttp2ConnectionEncoder(connection, new DefaultHttp2FrameWriter());
+        decoder = new DefaultHttp2ConnectionDecoder(connection, encoder, new DefaultHttp2FrameReader(headersDecoder));
     }
 
     @Override
@@ -80,35 +89,17 @@ public class HexDumpProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    @Override
-    public void channelRead(final ChannelHandlerContext ctx, Object msg) {
-        ByteBuf msg1 = ((ByteBuf)msg).copy();
-        ByteBuf byteBuf = (ByteBuf) msg;
-        System.out.println("***********************" + ByteBufUtil.hexDump(byteBuf));
-        int streamId = streamId(ctx, byteBuf);
-
-        Integer selector = streamIdToChannelIndexMap.get(streamId);
-        if(selector == null){
-            selector = counter.getAndIncrement() % remoteHost.length;
-            streamIdToChannelIndexMap.putIfAbsent(streamId, selector);
-        }
-
-
-        ByteBuf byteBuf2 = (ByteBuf) msg1;
-        System.out.println("***********************" + ByteBufUtil.hexDump(byteBuf2));
-
-        if (outboundChannel[selector].isActive()) {
-            outboundChannel[selector].writeAndFlush(msg1).addListener(new ChannelFutureListener() {
-                public void operationComplete(ChannelFuture future) {
-                    if (future.isSuccess()) {
-                        ctx.channel().read();
-                    } else {
-                        future.channel().close();
-                    }
-                }
-            });
-        }
-    }
+//    @Override
+//    public void channelRead(final ChannelHandlerContext ctx, Object msg) {
+//        List<Object> objects = new ArrayList<Object>();
+//        try{
+//            decoder.decodeFrame(ctx, (ByteBuf) msg, objects);
+//        } catch (Http2Exception e){
+//
+//        }
+//
+//
+//    }
 
     private int streamId(final ChannelHandlerContext ctx, ByteBuf in)  {
         // Read the header and prepare the unmarshaller to read the frame.

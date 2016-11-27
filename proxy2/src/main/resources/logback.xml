@@ -5,7 +5,7 @@
     </encoder>
   </appender>
 
-  <root level="DEBUG">
+  <root level="${logLevel:-info}">
     <appender-ref ref="STDOUT" />
   </root>
 </configuration>
