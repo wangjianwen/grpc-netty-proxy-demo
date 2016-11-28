@@ -20,7 +20,7 @@ public class MockGrpcClient {
             b.channel(NioSocketChannel.class);
             b.option(ChannelOption.SO_KEEPALIVE, true);
             b.remoteAddress(HOST, PORT);
-            b.handler(new MockGrpcInitializer());
+            b.handler(new MockGrpcClientInitializer());
 
             b.connect().syncUninterruptibly().channel();
         } catch (Exception e){

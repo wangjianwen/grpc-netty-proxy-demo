@@ -9,7 +9,7 @@ import io.netty.handler.logging.LoggingHandler;
 /**
  * Created by Administrator on 2016/11/27.
  */
-public class MockGrpcInitializer extends ChannelInitializer<SocketChannel> {
+public class MockGrpcClientInitializer extends ChannelInitializer<SocketChannel> {
 
     protected void initChannel(SocketChannel ch) throws Exception {
         ChannelPipeline pipeline = ch.pipeline();
