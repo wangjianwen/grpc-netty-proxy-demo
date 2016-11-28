@@ -1,0 +1,8 @@
+@startuml
+
+Http2ConnectionDecoder -> Http2FrameReader: readFrame
+Http2FrameReader -> Http2FrameReader: processHeaderState
+Http2FrameReader -> Http2FrameReader: processPayloadState
+alt
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+
+Http2DataWriter <|-- Http2FrameWriter
+Http2FrameWriter <|-- Http2ConnectionEncoder
+
+interface Http2DataWriter {
+    ChannelFuture writeData(ChannelHandlerContext ctx, int streamId,
+            ByteBuf data, int padding, boolean endStream, ChannelPromise promise);
+}
+
+interface Http2FrameWriter {
+    ChannelFuture writeHeaders(ChannelHandlerContext ctx, int streamId, Http2Headers headers,
+                int padding, boolean endStream, ChannelPromise promise);
+    ChannelFuture writeHeaders(ChannelHandlerContext ctx, int streamId, Http2Headers headers,
+                int streamDependency, short weight, boolean exclusive, int padding, boolean endStream,
+                ChannelPromise promise);
+
+   ChannelFuture writeSettings(ChannelHandlerContext ctx, Http2Settings settings,
+               ChannelPromise promise);
+
+   ChannelFuture writeSettingsAck(ChannelHandlerContext ctx, ChannelPromise promise);
+
+   ChannelFuture writeWindowUpdate(ChannelHandlerContext ctx, int streamId,
+                int windowSizeIncrement, ChannelPromise promise);
+}
+
+interface Http2ConnectionEncoder{
+    Http2Connection connection();
+    Http2FrameWriter frameWriter();
+    ChannelFuture writeFrame(ChannelHandlerContext ctx, byte frameType, int streamId,
+                Http2Flags flags, ByteBuf payload, ChannelPromise promise);
+}
+
+enum TimeUnit {
+DAYS
+HOURS
+MINUTES
+}
+
+@enduml

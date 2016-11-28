@@ -1,0 +1,46 @@
+@startuml
+
+Http2FrameListener <|-- PrefaceFrameListener
+Http2FrameListener <|-- FrameReadListener
+Http2FrameListener <|-- Http2FrameAdapter
+Http2FrameAdapter <|-- NettyClientHandler.FrameListener
+Http2FrameAdapter <|-- NettyServerHandler.FrameListener
+
+interface Http2FrameListener{
+    int onDataRead(ChannelHandlerContext ctx, int streamId, ByteBuf data, int padding,
+                       boolean endOfStream) throws Http2Exception;
+    void onHeadersRead(ChannelHandlerContext ctx, int streamId, Http2Headers headers, int padding,
+                boolean endOfStream) throws Http2Exception;
+    void onHeadersRead(ChannelHandlerContext ctx, int streamId, Http2Headers headers,
+                int streamDependency, short weight, boolean exclusive, int padding, boolean endOfStream)
+                throws Http2Exception;
+    void onPriorityRead(ChannelHandlerContext ctx, int streamId, int streamDependency,
+                            short weight, boolean exclusive) throws Http2Exception;
+
+    void onRstStreamRead(ChannelHandlerContext ctx, int streamId, long errorCode) throws Http2Exception;
+    void onSettingsAckRead(ChannelHandlerContext ctx) throws Http2Exception;
+    void onSettingsRead(ChannelHandlerContext ctx, Http2Settings settings) throws Http2Exception;
+    void onWindowUpdateRead(ChannelHandlerContext ctx, int streamId, int windowSizeIncrement)
+                throws Http2Exception;
+}
+
+class PrefaceFrameListener {
+}
+
+class FrameReadListener{
+}
+
+class Http2FrameAdapter {
+}
+
+class NettyClientHandler.FrameListener{
+}
+
+class NettyServerHandler.FrameListener{
+}
+
+
+
+
+
+@enduml
