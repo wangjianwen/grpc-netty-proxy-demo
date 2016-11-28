@@ -1,0 +1,21 @@
+@startuml
+title 客户端handler
+ChannelInboundHandler -> ChannelInboundHandler: handlerAdded
+ChannelOutboundHandler -> ChannelOutboundHandler: handlerAdded
+ChannelInboundHandler -> ChannelInboundHandler: channelRegistered
+ChannelOutboundHandler -> ChannelOutboundHandler: connect
+ChannelInboundHandler -> ChannelInboundHandler: channelActive
+ChannelOutboundHandler -> ChannelOutboundHandler: read
+ChannelOutboundHandler -> ChannelOutboundHandler: write
+ChannelOutboundHandler -> ChannelOutboundHandler: flush
+ChannelInboundHandler -> ChannelInboundHandler: channelRead
+ChannelOutboundHandler -> ChannelOutboundHandler: channelReadComplete
+ChannelOutboundHandler -> ChannelOutboundHandler: close
+ChannelInboundHandler -> ChannelInboundHandler: channelInactive
+ChannelInboundHandler -> ChannelInboundHandler: channelUnregistered
+ChannelOutboundHandler -> ChannelOutboundHandler: handlerRemoved
+ChannelInboundHandler -> ChannelInboundHandler: handlerRemoved
+
+
+
+@enduml

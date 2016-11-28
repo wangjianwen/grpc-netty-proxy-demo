@@ -1,0 +1,13 @@
+@startuml
+Bootstrap -> ChannelHandler:new
+Bootstrap <-- ChannelHandler:handler
+Bootstrap -> SocketAddress: connect
+Bootstrap -> ChannelFactory:newChannel
+activate NioSocketChannel
+ChannelFactory -> NioSocketChannel:newChannel
+ChannelFactory <-- NioSocketChannel:channel
+Bootstrap <-- ChannelFactory:channel
+
+Bootstrap -> NioSocketChannel:init(handler)
+NioSocketChannel -> ChannelPipeline: addLast(handler)
+@enduml

@@ -1,0 +1,7 @@
+@startuml
+ServerBootstrap -> SocketAddress: bind
+ServerBootstrap -> NioServerSocketChannel: new
+ServerBootstrap -> NioServerSocketChannel: init
+ServerBootstrap -> ChannelHandler: childHandler
+ServerBootstrap -> ChannelPipeline: addLast(handler)
+@enduml

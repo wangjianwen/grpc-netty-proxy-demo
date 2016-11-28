@@ -1,0 +1,30 @@
+@startuml
+title grpc代理之load balance
+alt 如果是client与proxy首次建立连接
+    client -> proxy: setting frame(with preface)
+    client <-- proxy: setting frame
+    client -> proxy: setting frame(ack)
+    client <-- proxy: setting frame(ack)
+end alt
+
+client -> proxy: header frame
+client -> proxy: data frame
+proxy -> proxy: parse
+proxy -> proxy: load balance, select one_server
+
+alt 如果是proxy与one_server首次建立连接
+    proxy -> one_server: setting frame(with preface)
+    proxy <-- one_server: setting frame
+    proxy -> one_server: setting frame(ack)
+    proxy <-- one_server: setting frame(ack)
+end alt
+
+proxy -> one_server: header frame
+proxy -> one_server: data frame
+proxy <-- one_server: header frame
+proxy <-- one_server: data frame
+
+client <-- proxy: header frame
+client <-- proxy: data frame
+
+@enduml

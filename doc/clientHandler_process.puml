@@ -1,0 +1,49 @@
+@startuml
+title 客户端handler的处理过程
+participant client
+participant clientHandler
+participant serverHandler
+participant server
+
+
+== connect ==
+client -> client: init
+client -> server: connect
+server -> serverHandler: handlerAdded(inBound)
+server -> serverHandler: handlerAdded(outBound)
+server -> serverHandler: channelRegistered(inBound)
+server -> serverHandler: channelActive(inBound)
+client <-- server: connect success
+client -> clientHandler: handlerAdded(outBound)
+client -> clientHandler: handlerAdded(inBound)
+client -> clientHandler: channelRegistered(inBound)
+client -> clientHandler: connect(outBound)
+client -> clientHandler: channelActive(inBound)
+
+== request ==
+client -> server: request
+client -> clientHandler: write(outBound)
+client -> clientHandler: flush(inBound)
+
+== response ==
+server -> serverHandler:read(outBound)
+server -> serverHandler:channelRead(inBound)
+server -> serverHandler:write(outBound)
+server -> serverHandler:flush(inBound)
+client -> clientHandler: channelRead(inBound)
+client -> clientHandler: channelReadComplete(outBound)
+
+
+== close ==
+
+client -> server: close
+server -> serverHandler: channelInactive(inBound)
+server -> serverHandler: channelUnregistered(inBound)
+server -> serverHandler: handlerRemoved(outBound)
+server -> serverHandler: handlerRemoved(inBound)
+client -> clientHandler: close(outBound)
+client -> clientHandler: channelInactive(inBound)
+client -> clientHandler: channelUnregistered(inBound)
+client -> clientHandler: handlerRemoved(outBound)
+client -> clientHandler: handlerRemoved(inBound)
+@enduml
