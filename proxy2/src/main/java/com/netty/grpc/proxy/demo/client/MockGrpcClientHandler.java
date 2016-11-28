@@ -3,9 +3,14 @@ package com.netty.grpc.proxy.demo.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http2.*;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 
 import static io.netty.handler.codec.http2.Http2CodecUtil.readUnsignedInt;
 
@@ -13,7 +18,7 @@ import static io.netty.handler.codec.http2.Http2CodecUtil.readUnsignedInt;
 /**
  * Created by Administrator on 2016/11/27.
  */
-public class MockGrpcClientHandler extends ChannelInboundHandlerAdapter{
+public class MockGrpcClientHandler extends ChannelInboundHandlerAdapter {
     public static final int DEFAULT_FLOW_CONTROL_WINDOW = 1048576; // 1MiB
     private final Http2FrameWriter writer = new DefaultHttp2FrameWriter();
     private boolean fisrt = true;
@@ -26,7 +31,7 @@ public class MockGrpcClientHandler extends ChannelInboundHandlerAdapter{
         settings.maxConcurrentStreams(0);
         ByteBuf preface = Http2CodecUtil.connectionPrefaceBuf().retainedDuplicate();
         ctx.write(preface);
-        writer.writeSettings(ctx,settings,ctx.newPromise());
+        writer.writeSettings(ctx, settings, ctx.newPromise());
         writer.writeWindowUpdate(ctx, 0, 983041, ctx.newPromise());
         ctx.flush();
 
@@ -36,25 +41,26 @@ public class MockGrpcClientHandler extends ChannelInboundHandlerAdapter{
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         System.out.print(ByteBufUtil.hexDump((ByteBuf) msg));
         //super.channelRead(ctx, msg);
-        if(fisrt){
+        if (fisrt) {
             writer.writeSettingsAck(ctx, ctx.newPromise());
             fisrt = false;
         }
 
-        readFrame(ctx, (ByteBuf)msg);
-
+        readFrame(ctx, (ByteBuf) msg);
 
     }
 
-    private void readFrame(ChannelHandlerContext ctx, ByteBuf buf){
-        while (buf.readableBytes() > 0){
+    private void readFrame(final ChannelHandlerContext ctx, ByteBuf buf) {
+        while (buf.readableBytes() > 0) {
             int payload = buf.readUnsignedMedium();
             int frameType = buf.readByte();
             Http2Flags flags = new Http2Flags(buf.readUnsignedByte());
             int streamId = readUnsignedInt(buf);
             buf.readBytes(payload);
-            if(frameType == Http2FrameTypes.SETTINGS && flags.ack()){
+            if (frameType == Http2FrameTypes.SETTINGS && flags.ack()) {
                 System.out.print("********************* setting ack received ....");
+
+
 
                 ByteBufAllocator alloc = ctx.alloc();
                 ByteBuf byteBuf = alloc.buffer();
@@ -178,21 +184,7 @@ public class MockGrpcClientHandler extends ChannelInboundHandlerAdapter{
                 byteBuf.writeByte(0xd9);
                 byteBuf.writeByte(0xab);
 
-                ctx.writeAndFlush(buf, ctx.newPromise());
-
-
-//                Http2Headers http2Headers = new DefaultHttp2Headers();
-//                http2Headers.set("method", "post");
-//                http2Headers.set("scheme", "http");
-//                http2Headers.set("authority", "localhost:105111");
-//                http2Headers.set("path", "helloworld.Greeter/SayHello");
-//                http2Headers.set("status", "status");
-//                http2Headers.set("content-type", "application/grpc");
-//                http2Headers.set("te", "trailers");
-//                writer.writeHeaders(ctx, Http2FrameTypes.HEADERS, http2Headers, 3, false, ctx.newPromise());
-
-                //ByteBuf byteBuf = ByteBufUtil.appendPrettyHexDump();
-
+               //data
                 byteBuf.writeByte(0x00);
                 byteBuf.writeByte(0x00);
                 byteBuf.writeByte(0x0e);
@@ -216,12 +208,23 @@ public class MockGrpcClientHandler extends ChannelInboundHandlerAdapter{
                 byteBuf.writeByte(0x64);
                 byteBuf.writeByte(0x5f);
                 byteBuf.writeByte(0x30);
-                writer.writeData(ctx, 3, byteBuf, 0, true, ctx.newPromise());
+                ctx.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
+                    public void operationComplete(ChannelFuture future) {
+                        if (future.isSuccess()) {
+                            ctx.channel().read();
+                        } else {
+                            future.channel().close();
+                        }
+                    }
+                });
+
+
+
             }
         }
     }
 
-    private boolean isSettingAck(ByteBuf buf){
+    private boolean isSettingAck(ByteBuf buf) {
 
         int payload = buf.readUnsignedMedium();
         int type = buf.readByte();
@@ -229,7 +232,7 @@ public class MockGrpcClientHandler extends ChannelInboundHandlerAdapter{
     }
 
     private static void writeFrameHeaderInternal(ByteBuf out, int payloadLength, byte type,
-                                                 Http2Flags flags, int streamId) {
+            Http2Flags flags, int streamId) {
         out.writeMedium(payloadLength);
         out.writeByte(type);
         out.writeByte(flags.value());
