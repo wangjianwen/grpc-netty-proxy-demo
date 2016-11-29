@@ -26,10 +26,8 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelOption;
-import io.netty.handler.codec.http2.Http2CodecUtil;
-import io.netty.handler.codec.http2.Http2Exception;
-import io.netty.handler.codec.http2.Http2Flags;
-import io.netty.handler.codec.http2.Http2FrameTypes;
+import io.netty.handler.codec.http2.*;
+import io.netty.handler.logging.LogLevel;
 
 import static io.netty.buffer.ByteBufUtil.hexDump;
 import static io.netty.handler.codec.http2.Http2CodecUtil.readUnsignedInt;
@@ -62,15 +60,17 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
                 .option(ChannelOption.AUTO_READ, false);
 
         for(int i = 0; i < remoteHosts.length; i++){
-            ChannelFuture f = b.connect(remoteHosts[i], remotePorts[i]);
+            final ChannelFuture f = b.connect(remoteHosts[i], remotePorts[i]);
             outboundChannels[i] = f.channel();
             f.addListener(new ChannelFutureListener() {
                 public void operationComplete(ChannelFuture future) {
                     if (future.isSuccess()) {
                         // connection complete start to read first data
                         inboundChannel.read();
+                        System.out.println(f.channel().remoteAddress() + ", " + f.channel().localAddress());
                     } else {
                         // Close the connection if the connection attempt has failed.
+                        System.out.println("channelActive close" + inboundChannel.remoteAddress() + ", " + inboundChannel.localAddress());
                         inboundChannel.close();
                     }
                 }
@@ -174,9 +174,6 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
             byteBuf.writeByte(0x10);
             byteBuf.writeByte(0x00);
             byteBuf.writeByte(0x00);
-
-
-
         } else {
             System.out.println("********************* setting ack received ...");
             //00 00 00 04 01 00 00 00 00
@@ -193,8 +190,10 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         ctx.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) {
                 if (future.isSuccess()) {
+                    System.out.println(" ...operationComplete isSuccess");
                     ctx.channel().read();
                 } else {
+                    System.out.println("...operationComplete failure");
                     future.channel().close();
                 }
             }
@@ -232,23 +231,28 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
 
     private void handleHeaderFrame(final ChannelHandlerContext ctx, final ByteBuf copy, final int streamId){
         System.out.print("******************************** headers received");
-        forwardThisFrame(ctx, copy, streamId);
+        forwardThisFrame(ctx, copy, streamId, 1);
     }
 
 
     private void handleDataFrame(final ChannelHandlerContext ctx, final ByteBuf copy, int streamId){
         System.out.print("******************************** data received");
-        forwardThisFrame(ctx, copy, streamId);
+        forwardThisFrame(ctx, copy, streamId, 2);
     }
 
-    private void forwardThisFrame(final ChannelHandlerContext ctx, final ByteBuf copy, int streamId){
-        int select = (streamId - 2) % remoteHosts.length ;
+    private void forwardThisFrame(final ChannelHandlerContext ctx, final ByteBuf copy, int streamId, final int type){
+        //int select = (streamId - 2) % remoteHosts.length ;
+        int select = 0;
+        System.out.println("---------------------------------select:" + select + "," + ByteBufUtil.hexDump(copy));
+        final Channel inboundChannel = ctx.channel();
         outboundChannels[select].writeAndFlush(copy).addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) {
                 if (future.isSuccess()) {
-                    ctx.channel().read();
+                    System.out.println("forward success ------------------------------------------type=" + type);
+                    inboundChannel.read();
                 } else {
-                    future.channel().close();
+                    System.out.println("forward failure------------------------------------------");
+                    inboundChannel.close();
                 }
             }
         });
@@ -256,11 +260,14 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-//        if (outboundChannels != null) {
-//            for (int i = 0; i < outboundChannels.length; i++){
-//                closeOnFlush(outboundChannels[i]);
-//            }
-//        }
+        if (outboundChannels != null) {
+
+            for (int i = 0; i < outboundChannels.length; i++){
+                if(outboundChannels[i].isActive()){
+                    closeOnFlush(outboundChannels[i]);
+                }
+            }
+        }
     }
 
     @Override

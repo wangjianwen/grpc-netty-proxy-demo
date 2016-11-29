@@ -18,11 +18,7 @@ package com.netty.grpc.proxy.demo.handler;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.*;
 import io.netty.handler.codec.http2.DefaultHttp2FrameWriter;
 import io.netty.handler.codec.http2.Http2CodecUtil;
 import io.netty.handler.codec.http2.Http2Flags;
@@ -32,6 +28,7 @@ import io.netty.handler.codec.http2.Http2Settings;
 
 import static io.netty.handler.codec.http2.Http2CodecUtil.readUnsignedInt;
 
+@ChannelHandler.Sharable
 class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
     public static final int DEFAULT_FLOW_CONTROL_WINDOW = 1048576; // 1MiB
     private final Channel inboundChannel;
@@ -54,42 +51,41 @@ class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
         writer.writeSettings(ctx, settings, ctx.newPromise());
         writer.writeWindowUpdate(ctx, 0, 983041, ctx.newPromise());
         ctx.flush();
-        //ctx.read();
+        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+        ctx.read();
     }
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) {
         if (first) {
-            writer.writeSettingsAck(ctx, ctx.newPromise());
+            System.out.println("===============================================1");
             first = false;
+            writer.writeSettingsAck(ctx, ctx.newPromise());
             ctx.flush();
         } else {
-            ByteBuf copy = ((ByteBuf)msg).copy();
-            readFrame(ctx, (ByteBuf) msg, copy);
+            System.out.println("===============================================2");
+            inboundChannel.writeAndFlush(msg).addListener(new ChannelFutureListener() {
+                public void operationComplete(ChannelFuture future) {
+                    if (future.isSuccess()) {
+                        ctx.channel().read();
+                    } else {
+                        future.channel().close();
+                    }
+                }
+            });
 
         }
     }
 
-    private void readFrame(final ChannelHandlerContext ctx, ByteBuf buf, ByteBuf copy) {
-        inboundChannel.writeAndFlush(copy).addListener(new ChannelFutureListener() {
-            public void operationComplete(ChannelFuture future) {
-                if (future.isSuccess()) {
-                    ctx.channel().read();
-                } else {
-                    future.channel().close();
-                }
-            }
-        });
-    }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        DefaultHttp2ProxyHandler.closeOnFlush(inboundChannel);
+        GrpcProxyFrontendHandler.closeOnFlush(inboundChannel);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         cause.printStackTrace();
-        DefaultHttp2ProxyHandler.closeOnFlush(ctx.channel());
+        GrpcProxyFrontendHandler.closeOnFlush(ctx.channel());
     }
 }
