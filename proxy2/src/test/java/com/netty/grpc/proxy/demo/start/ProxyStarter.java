@@ -15,7 +15,7 @@
  */
 package com.netty.grpc.proxy.demo.start;
 
-import com.netty.grpc.proxy.demo.handler.HexDumpProxyInitializer;
+import com.netty.grpc.proxy.demo.handler.GrpcProxyInitializer;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -30,7 +30,6 @@ import io.netty.handler.logging.LoggingHandler;
 public final class ProxyStarter {
 
     private static final int LOCAL_PORT = Integer.parseInt(System.getProperty("localPort", "8443"));
-    private static AtomicInteger robinSelector = new AtomicInteger(0);
     private static String[] remote_hosts = {"localhost", "localhost", "localhost"};
     private static int[] remote_ports = new int[]{10511, 10512, 10513};
 
@@ -46,7 +45,7 @@ public final class ProxyStarter {
              .channel(NioServerSocketChannel.class)
              .handler(new LoggingHandler(LogLevel.INFO))
 
-             .childHandler(new HexDumpProxyInitializer(remote_hosts, remote_ports, robinSelector))
+             .childHandler(new GrpcProxyInitializer(remote_hosts, remote_ports))
              .childOption(ChannelOption.AUTO_READ, false)
              .bind(LOCAL_PORT).sync().channel().closeFuture().sync();
         } finally {

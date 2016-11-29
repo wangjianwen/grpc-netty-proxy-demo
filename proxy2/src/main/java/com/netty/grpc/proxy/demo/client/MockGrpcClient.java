@@ -9,7 +9,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 
 public class MockGrpcClient {
     private final static String HOST = "localhost";
-    private final static int PORT = 10511;
+    private final static int PORT = 8443;
 
     public static void main(String[] args) {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
