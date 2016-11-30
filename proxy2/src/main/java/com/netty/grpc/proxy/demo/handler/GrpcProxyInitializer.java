@@ -21,14 +21,18 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class GrpcProxyInitializer extends ChannelInitializer<SocketChannel> {
 
     private final String[] remoteHosts;
     private final int[] remotePorts;
+    private final AtomicInteger counter;
 
-    public GrpcProxyInitializer(String[] remoteHosts, int[] remotePorts) {
+    public GrpcProxyInitializer(String[] remoteHosts, int[] remotePorts, AtomicInteger counter) {
         this.remoteHosts = remoteHosts;
         this.remotePorts = remotePorts;
+        this.counter = counter;
     }
 
     @Override
@@ -37,6 +41,6 @@ public class GrpcProxyInitializer extends ChannelInitializer<SocketChannel> {
         ChannelPipeline pipeline = ch.pipeline();
 
         pipeline.addLast(new LoggingHandler(LogLevel.INFO));
-        pipeline.addLast(new GrpcProxyFrontendHandler(remoteHosts, remotePorts));
+        pipeline.addLast(new GrpcProxyFrontendHandler(remoteHosts, remotePorts, counter));
     }
 }

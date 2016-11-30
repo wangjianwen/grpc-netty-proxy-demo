@@ -29,6 +29,8 @@ import io.netty.channel.ChannelOption;
 import io.netty.handler.codec.http2.*;
 import io.netty.handler.logging.LogLevel;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static io.netty.buffer.ByteBufUtil.hexDump;
 import static io.netty.handler.codec.http2.Http2CodecUtil.readUnsignedInt;
 import static io.netty.handler.codec.http2.Http2Error.PROTOCOL_ERROR;
@@ -41,11 +43,14 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
     private final int[] remotePorts;
     private final Channel[] outboundChannels;
     private boolean first = true;
+    private final AtomicInteger counter ;
+    private Channel selectedChannel;
 
-    public GrpcProxyFrontendHandler(String[] remoteHosts, int[] remotePorts) {
+    public GrpcProxyFrontendHandler(String[] remoteHosts, int[] remotePorts, AtomicInteger counter) {
         this.remoteHosts = remoteHosts;
         this.remotePorts = remotePorts;
         this.outboundChannels = new Channel[remoteHosts.length];
+        this.counter = counter;
     }
 
     @Override
@@ -67,10 +72,10 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
                     if (future.isSuccess()) {
                         // connection complete start to read first data
                         inboundChannel.read();
-                        System.out.println(f.channel().remoteAddress() + ", " + f.channel().localAddress());
+//                        System.out.println(f.channel().remoteAddress() + ", " + f.channel().localAddress());
                     } else {
                         // Close the connection if the connection attempt has failed.
-                        System.out.println("channelActive close" + inboundChannel.remoteAddress() + ", " + inboundChannel.localAddress());
+//                        System.out.println("channelActive close" + inboundChannel.remoteAddress() + ", " + inboundChannel.localAddress());
                         inboundChannel.close();
                     }
                 }
@@ -93,14 +98,15 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
             first = false;
         }
 
-        ByteBuf copy = buf.copy();
+
         while (buf.readableBytes() > 0) {
 
             int payload = buf.readUnsignedMedium();
             int frameType = buf.readByte();
             Http2Flags flags = new Http2Flags(buf.readUnsignedByte());
             int streamId = readUnsignedInt(buf);
-            buf.readBytes(payload);
+            ByteBuf payloadBuf = buf.readBytes(payload);
+            ByteBuf copy = ctx.alloc().buffer();
             switch (frameType){
                 case Http2FrameTypes.SETTINGS:
                     handleSettingFrame(ctx, flags);
@@ -109,9 +115,20 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
                     handleWindowsUpdateFrame(ctx);
                     break;
                 case Http2FrameTypes.HEADERS:
+
+                    copy.writeMedium(payload);
+                    copy.writeByte(frameType);
+                    copy.writeByte(flags.value());
+                    copy.writeInt(streamId);
+                    copy.writeBytes(payloadBuf);
                     handleHeaderFrame(ctx, copy, streamId);
                     break;
                 case Http2FrameTypes.DATA:
+                    copy.writeMedium(payload);
+                    copy.writeByte(frameType);
+                    copy.writeByte(flags.value());
+                    copy.writeInt(streamId);
+                    copy.writeBytes(payloadBuf);
                     handleDataFrame(ctx, copy, streamId);
                     break;
                 default:
@@ -149,7 +166,7 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         ByteBufAllocator alloc = ctx.alloc();
         ByteBuf byteBuf = alloc.buffer();
         if(!flags.ack()){
-            System.out.println("********************* setting received ...");
+//            System.out.println("********************* setting received ...");
 
             //00 00 0c 04 00 00 00 00 00 00 03 7f ff ff ff 00
             byteBuf.writeByte(0x00);
@@ -175,7 +192,7 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
             byteBuf.writeByte(0x00);
             byteBuf.writeByte(0x00);
         } else {
-            System.out.println("********************* setting ack received ...");
+//            System.out.println("********************* setting ack received ...");
             //00 00 00 04 01 00 00 00 00
             byteBuf.writeByte(0x00);
             byteBuf.writeByte(0x00);
@@ -190,10 +207,10 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
         ctx.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) {
                 if (future.isSuccess()) {
-                    System.out.println(" ...operationComplete isSuccess");
+//                    System.out.println(" ...operationComplete isSuccess");
                     ctx.channel().read();
                 } else {
-                    System.out.println("...operationComplete failure");
+//                    System.out.println("...operationComplete failure");
                     future.channel().close();
                 }
             }
@@ -230,28 +247,32 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
     }
 
     private void handleHeaderFrame(final ChannelHandlerContext ctx, final ByteBuf copy, final int streamId){
-        System.out.print("******************************** headers received");
+//        System.out.print("******************************** headers received");
         forwardThisFrame(ctx, copy, streamId, 1);
     }
 
 
     private void handleDataFrame(final ChannelHandlerContext ctx, final ByteBuf copy, int streamId){
-        System.out.print("******************************** data received");
+//        System.out.print("******************************** data received");
         forwardThisFrame(ctx, copy, streamId, 2);
     }
 
     private void forwardThisFrame(final ChannelHandlerContext ctx, final ByteBuf copy, int streamId, final int type){
-        //int select = (streamId - 2) % remoteHosts.length ;
-        int select = 0;
-        System.out.println("---------------------------------select:" + select + "," + ByteBufUtil.hexDump(copy));
+        if(selectedChannel == null){
+            int select = (counter.getAndIncrement()) % remoteHosts.length ;
+            selectedChannel = outboundChannels[select];
+        }
+
+        //int select = 0;
+//        System.out.println("---------------------------------select:" + select + "," + ByteBufUtil.hexDump(copy));
         final Channel inboundChannel = ctx.channel();
-        outboundChannels[select].writeAndFlush(copy).addListener(new ChannelFutureListener() {
+        selectedChannel.writeAndFlush(copy).addListener(new ChannelFutureListener() {
             public void operationComplete(ChannelFuture future) {
                 if (future.isSuccess()) {
-                    System.out.println("forward success ------------------------------------------type=" + type);
+//                    System.out.println("forward success ------------------------------------------type=" + type);
                     inboundChannel.read();
                 } else {
-                    System.out.println("forward failure------------------------------------------");
+//                    System.out.println("forward failure------------------------------------------");
                     inboundChannel.close();
                 }
             }
@@ -281,7 +302,7 @@ public class GrpcProxyFrontendHandler extends ChannelInboundHandlerAdapter {
      */
     static void closeOnFlush(Channel ch) {
         if (ch.isActive()) {
-            System.out.println("----------------------------------------------");
+//            System.out.println("----------------------------------------------");
             ch.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
         }
     }

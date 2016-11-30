@@ -38,6 +38,7 @@ public final class ProxyStarter {
         // Configure the bootstrap.
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
+        AtomicInteger counter = new AtomicInteger(0);
         try {
 
             ServerBootstrap b = new ServerBootstrap();
@@ -45,7 +46,7 @@ public final class ProxyStarter {
              .channel(NioServerSocketChannel.class)
              .handler(new LoggingHandler(LogLevel.INFO))
 
-             .childHandler(new GrpcProxyInitializer(remote_hosts, remote_ports))
+             .childHandler(new GrpcProxyInitializer(remote_hosts, remote_ports,counter))
              .childOption(ChannelOption.AUTO_READ, false)
              .bind(LOCAL_PORT).sync().channel().closeFuture().sync();
         } finally {

@@ -56,28 +56,143 @@ class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) {
-        if (first) {
-            first = false;
-            writer.writeSettingsAck(ctx, ctx.newPromise());
-            ctx.flush();
-        } else {
-            if(inboundChannel.isActive()){
-                System.out.println("send msg, -----------:" + ByteBufUtil.hexDump((ByteBuf) msg));
-                inboundChannel.writeAndFlush(msg).addListener(new ChannelFutureListener() {
-                    public void operationComplete(ChannelFuture future) {
-                        if (future.isSuccess()) {
-                            ctx.channel().read();
-                        } else {
-                            future.channel().close();
-                        }
-                    }
-                });
-            } else {
-                System.out.println("--------*****************-------------========");
+        ByteBuf buf = (ByteBuf)msg;
+        System.out.println("channelRead:" + ByteBufUtil.hexDump((buf)));
+        while (buf.readableBytes() > 0) {
+
+            int payload = buf.readUnsignedMedium();
+            int frameType = buf.readByte();
+            Http2Flags flags = new Http2Flags(buf.readUnsignedByte());
+            int streamId = readUnsignedInt(buf);
+            ByteBuf payloadBuf = buf.readBytes(payload);
+            ByteBuf copy = ctx.alloc().buffer();
+            System.out.println("frame_type:" + frameType + ","  + ByteBufUtil.hexDump((payloadBuf)));
+            switch (frameType){
+                case Http2FrameTypes.SETTINGS:
+                    handleSettingFrame(ctx, flags);
+                    break;
+                case Http2FrameTypes.WINDOW_UPDATE:
+                    handleWindowsUpdateFrame(ctx);
+                    break;
+                case Http2FrameTypes.HEADERS:
+
+                    copy.writeMedium(payload);
+                    copy.writeByte(frameType);
+                    copy.writeByte(flags.value());
+                    copy.writeInt(streamId);
+                    copy.writeBytes(payloadBuf);
+                    forward(ctx, copy);
+                    break;
+                case Http2FrameTypes.DATA:
+                    copy.writeMedium(payload);
+                    copy.writeByte(frameType);
+                    copy.writeByte(flags.value());
+                    copy.writeInt(streamId);
+                    copy.writeBytes(payloadBuf);
+                    forward(ctx, copy);
+                    break;
+                default:
+                    break;
+
             }
-
-
         }
+
+    }
+
+    private void forward(final ChannelHandlerContext ctx, ByteBuf byteBuf){
+        if(inboundChannel.isActive()){
+            inboundChannel.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
+                public void operationComplete(ChannelFuture future) {
+                    if (future.isSuccess()) {
+                        ctx.channel().read();
+                    } else {
+                        future.channel().close();
+                    }
+                }
+            });
+        } else {
+        }
+    }
+
+    private void handleSettingFrame(final ChannelHandlerContext ctx, Http2Flags flags){
+        ByteBufAllocator alloc = ctx.alloc();
+        ByteBuf byteBuf = alloc.buffer();
+        if(!flags.ack()){
+
+            //00 00 0c 04 00 00 00 00 00 00 03 7f ff ff ff 00
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x0c);
+            byteBuf.writeByte(0x04);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x03);
+            byteBuf.writeByte(0x7f);
+            byteBuf.writeByte(0xff);
+            byteBuf.writeByte(0xff);
+            byteBuf.writeByte(0xff);
+            byteBuf.writeByte(0x00);
+            //04 00 10 00 00
+            byteBuf.writeByte(0x04);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x10);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+        } else {
+//            System.out.println("********************* setting ack received ...");
+            //00 00 00 04 01 00 00 00 00
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x04);
+            byteBuf.writeByte(0x01);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+            byteBuf.writeByte(0x00);
+        }
+        ctx.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
+            public void operationComplete(ChannelFuture future) {
+                if (future.isSuccess()) {
+//                    System.out.println(" ...operationComplete isSuccess");
+                    ctx.channel().read();
+                } else {
+//                    System.out.println("...operationComplete failure");
+                    future.channel().close();
+                }
+            }
+        });
+    }
+    private void handleWindowsUpdateFrame(final ChannelHandlerContext ctx){
+        ByteBufAllocator alloc = ctx.alloc();
+        ByteBuf byteBuf = alloc.buffer();
+        // 00 00 04 08 00 00 00 00 00 00 0f 00 01
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x04);
+        byteBuf.writeByte(0x08);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x0f);
+        byteBuf.writeByte(0x00);
+        byteBuf.writeByte(0x01);
+        ctx.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
+            public void operationComplete(ChannelFuture future) {
+                if (future.isSuccess()) {
+                    ctx.channel().read();
+                } else {
+                    future.channel().close();
+                }
+            }
+        });
     }
 
 
