@@ -51,28 +51,31 @@ class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
         writer.writeSettings(ctx, settings, ctx.newPromise());
         writer.writeWindowUpdate(ctx, 0, 983041, ctx.newPromise());
         ctx.flush();
-        System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
         ctx.read();
     }
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) {
         if (first) {
-            System.out.println("===============================================1");
             first = false;
             writer.writeSettingsAck(ctx, ctx.newPromise());
             ctx.flush();
         } else {
-            System.out.println("===============================================2");
-            inboundChannel.writeAndFlush(msg).addListener(new ChannelFutureListener() {
-                public void operationComplete(ChannelFuture future) {
-                    if (future.isSuccess()) {
-                        ctx.channel().read();
-                    } else {
-                        future.channel().close();
+            if(inboundChannel.isActive()){
+                System.out.println("send msg, -----------:" + ByteBufUtil.hexDump((ByteBuf) msg));
+                inboundChannel.writeAndFlush(msg).addListener(new ChannelFutureListener() {
+                    public void operationComplete(ChannelFuture future) {
+                        if (future.isSuccess()) {
+                            ctx.channel().read();
+                        } else {
+                            future.channel().close();
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                System.out.println("--------*****************-------------========");
+            }
+
 
         }
     }

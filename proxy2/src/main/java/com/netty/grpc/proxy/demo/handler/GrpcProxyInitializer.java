@@ -33,6 +33,7 @@ public class GrpcProxyInitializer extends ChannelInitializer<SocketChannel> {
 
     @Override
     public void initChannel(SocketChannel ch) {
+        System.out.println("---------------------------------MockGrpcServerInitializer-----------------");
         ChannelPipeline pipeline = ch.pipeline();
 
         pipeline.addLast(new LoggingHandler(LogLevel.INFO));
