@@ -15,12 +15,17 @@
  */
 package com.netty.grpc.proxy.demo.handler;
 
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class GrpcProxyInitializer extends ChannelInitializer<SocketChannel> {
@@ -28,11 +33,16 @@ public class GrpcProxyInitializer extends ChannelInitializer<SocketChannel> {
     private final String[] remoteHosts;
     private final int[] remotePorts;
     private final AtomicInteger counter;
+    private final List<ChannelFuture> outboundChannels;
+    private final ConcurrentMap<Channel, AtomicInteger> channelStreamIds;
 
-    public GrpcProxyInitializer(String[] remoteHosts, int[] remotePorts, AtomicInteger counter) {
+    public GrpcProxyInitializer(String[] remoteHosts, int[] remotePorts, AtomicInteger counter, List<ChannelFuture>
+            outboundChannels,ConcurrentMap<Channel, AtomicInteger> channelStreamIds) {
         this.remoteHosts = remoteHosts;
         this.remotePorts = remotePorts;
         this.counter = counter;
+        this.outboundChannels = outboundChannels;
+        this.channelStreamIds = channelStreamIds;
     }
 
     @Override
@@ -41,6 +51,6 @@ public class GrpcProxyInitializer extends ChannelInitializer<SocketChannel> {
         ChannelPipeline pipeline = ch.pipeline();
 
         pipeline.addLast(new LoggingHandler(LogLevel.INFO));
-        pipeline.addLast(new GrpcProxyFrontendHandler(remoteHosts, remotePorts, counter));
+        pipeline.addLast(new GrpcProxyFrontendHandler(remoteHosts, remotePorts, counter,outboundChannels, channelStreamIds));
     }
 }

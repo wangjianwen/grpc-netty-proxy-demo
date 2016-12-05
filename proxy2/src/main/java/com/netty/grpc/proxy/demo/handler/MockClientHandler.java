@@ -1,54 +1,27 @@
-/*
- * Copyright 2012 The Netty Project
- *
- * The Netty Project licenses this file to you under the Apache License,
- * version 2.0 (the "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at:
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
 package com.netty.grpc.proxy.demo.handler;
 
-import com.netty.grpc.proxy.demo.handler.parser.Http2HeaderParser;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http2.DefaultHttp2FrameWriter;
-import io.netty.handler.codec.http2.DefaultHttp2HeadersDecoder;
-import io.netty.handler.codec.http2.DefaultHttp2HeadersEncoder;
 import io.netty.handler.codec.http2.Http2CodecUtil;
-import io.netty.handler.codec.http2.Http2Exception;
 import io.netty.handler.codec.http2.Http2Flags;
 import io.netty.handler.codec.http2.Http2FrameTypes;
 import io.netty.handler.codec.http2.Http2FrameWriter;
-import io.netty.handler.codec.http2.Http2Headers;
-import io.netty.handler.codec.http2.Http2HeadersDecoder;
 import io.netty.handler.codec.http2.Http2Settings;
 
 import static io.netty.handler.codec.http2.Http2CodecUtil.readUnsignedInt;
 
-@ChannelHandler.Sharable
-class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
+public class MockClientHandler extends ChannelInboundHandlerAdapter {
     public static final int DEFAULT_FLOW_CONTROL_WINDOW = 1048576; // 1MiB
-    private final Channel inboundChannel;
     private final Http2FrameWriter writer = new DefaultHttp2FrameWriter();
-    private boolean first = true;
-    private int streamId;
-    private DefaultHttp2HeadersEncoder encoder = new DefaultHttp2HeadersEncoder();
-    private Http2HeadersDecoder decoder = new DefaultHttp2HeadersDecoder();
-    Http2HeaderParser parser = new Http2HeaderParser();
 
-    public GrpcProxyBackendHandler(Channel inboundChannel) {
-        this.inboundChannel = inboundChannel;
-    }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
@@ -68,7 +41,7 @@ class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) {
         ByteBuf buf = (ByteBuf)msg;
-        //System.out.println("channelRead:" + ByteBufUtil.hexDump((buf)));
+        System.out.println("channelRead:" + ByteBufUtil.hexDump((buf)));
         while (buf.readableBytes() > 0) {
 
             int payload = buf.readUnsignedMedium();
@@ -77,7 +50,7 @@ class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
             int streamId = readUnsignedInt(buf);
             ByteBuf payloadBuf = buf.readBytes(payload);
             ByteBuf copy = ctx.alloc().buffer();
-            //System.out.println("frame_type:" + frameType + ","  + ByteBufUtil.hexDump((payloadBuf)));
+            System.out.println("frame_type:" + frameType + ","  + ByteBufUtil.hexDump((payloadBuf)));
             switch (frameType){
                 case Http2FrameTypes.SETTINGS:
                     handleSettingFrame(ctx, flags);
@@ -90,39 +63,22 @@ class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
                     copy.writeMedium(payload);
                     copy.writeByte(frameType);
                     copy.writeByte(flags.value());
-                    copy.writeInt(this.streamId);
+                    copy.writeInt(streamId);
                     copy.writeBytes(payloadBuf);
-                    System.out.println("+++++++++++++++++++++++++headers:" + ByteBufUtil.hexDump(copy));
-                    forward(ctx, copy);
+                    ctx.fireChannelRead(copy);
                     break;
                 case Http2FrameTypes.DATA:
                     copy.writeMedium(payload);
                     copy.writeByte(frameType);
                     copy.writeByte(flags.value());
-                    copy.writeInt(this.streamId);
+                    copy.writeInt(streamId);
                     copy.writeBytes(payloadBuf);
-                    forward(ctx, copy);
+                    ctx.fireChannelRead(copy);
                     break;
                 default:
                     break;
 
             }
-        }
-
-    }
-
-    private void forward(final ChannelHandlerContext ctx, ByteBuf byteBuf){
-        if(inboundChannel.isActive()){
-            inboundChannel.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
-                public void operationComplete(ChannelFuture future) {
-                    if (future.isSuccess()) {
-                        ctx.channel().read();
-                    } else {
-                        future.channel().close();
-                    }
-                }
-            });
-        } else {
         }
     }
 
@@ -208,18 +164,4 @@ class GrpcProxyBackendHandler extends ChannelInboundHandlerAdapter {
     }
 
 
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) {
-        GrpcProxyFrontendHandler.closeOnFlush(inboundChannel);
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        cause.printStackTrace();
-        GrpcProxyFrontendHandler.closeOnFlush(ctx.channel());
-    }
-
-    public void setStreamId(int streamId) {
-        this.streamId = streamId;
-    }
 }

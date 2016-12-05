@@ -16,10 +16,18 @@
 package com.netty.grpc.proxy.demo.start;
 
 import com.netty.grpc.proxy.demo.handler.GrpcProxyInitializer;
+import com.netty.grpc.proxy.demo.handler.ServiceChannelsHolder;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -39,14 +47,15 @@ public final class ProxyStarter {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         AtomicInteger counter = new AtomicInteger(0);
+        List<ChannelFuture> channelFutureList = ServiceChannelsHolder.getInstance().getServiceChannels();
+        ConcurrentMap<Channel, AtomicInteger> channelStreamIds = new ConcurrentHashMap<Channel, AtomicInteger>();
         try {
 
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
              .channel(NioServerSocketChannel.class)
              .handler(new LoggingHandler(LogLevel.INFO))
-
-             .childHandler(new GrpcProxyInitializer(remote_hosts, remote_ports,counter))
+             .childHandler(new GrpcProxyInitializer(remote_hosts, remote_ports,counter,channelFutureList, channelStreamIds))
              .childOption(ChannelOption.AUTO_READ, false)
              .bind(LOCAL_PORT).sync().channel().closeFuture().sync();
         } finally {
