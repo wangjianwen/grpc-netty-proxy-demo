@@ -10,7 +10,7 @@ public class Application {
 //        String user = "world_" ;
 //        client.greet(user);
 
-       for (int i = 0; i < 4; i++) {
+       for (int i = 0; i < 1; i++) {
            HelloWorldClient client = new HelloWorldClient("localhost", proxyPort);
             String user = "world_" + i;
             client.greet(user);
