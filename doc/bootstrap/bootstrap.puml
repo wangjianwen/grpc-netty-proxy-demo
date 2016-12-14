@@ -1,0 +1,10 @@
+@startuml
+Bootstrap -> Bootstrap:init(eventGroup, ChannelInitializer etc)
+Bootstrap -> ChannelFactory: newChannel
+Bootstrap <-- ChannelFactory: channel
+Bootstrap -> EventLoopGroup: register(channel)
+note right of EventLoopGroup
+  fire event:channel add, register
+end note
+Bootstrap -> Channel: connect(local addr, remote addr)
+@enduml

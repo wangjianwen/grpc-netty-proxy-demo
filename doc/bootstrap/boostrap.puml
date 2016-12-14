@@ -1,0 +1,11 @@
+@startuml
+
+abstract class AbstractBootstrap
+class Bootstrap
+class ServerBootstrap
+
+AbstractBootstrap <|-- Bootstrap
+AbstractBootstrap <|-- ServerBootstrap
+
+
+@enduml

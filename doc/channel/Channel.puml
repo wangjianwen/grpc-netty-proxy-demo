@@ -1,0 +1,34 @@
+@startuml
+
+interface Channel{
+    ChannelPipeline pipeline();
+    EventLoop eventLoop();
+    ChannelFuture connect(SocketAddress remoteAddress);
+    ChannelFuture connect(SocketAddress remoteAddress, SocketAddress localAddress);
+    Channel read();
+    ChannelFuture write(Object msg);
+    ChannelFuture writeAndFlush(Object msg);
+}
+
+interface ChannelPipeline {
+    ChannelPipeline addFirst(String name, ChannelHandler handler);
+    ChannelPipeline addLast(String name, ChannelHandler handler);
+}
+
+interface ChannelHandler {
+    void handlerAdded(ChannelHandlerContext ctx) throws Exception;
+    void handlerRemoved(ChannelHandlerContext ctx) throws Exception;
+}
+
+interface ChannelInboundHandler{
+    void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception;
+    void channelActive(ChannelHandlerContext ctx) throws Exception;
+    void channelReadComplete(ChannelHandlerContext ctx) throws Exception;
+    void channelRegistered(ChannelHandlerContext ctx) throws Exception;
+    void channelUnregistered(ChannelHandlerContext ctx) throws Exception;
+}
+
+interface ChannelOutboundHandler{
+}
+
+@enduml
