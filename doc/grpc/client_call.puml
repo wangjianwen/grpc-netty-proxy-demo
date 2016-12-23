@@ -1,0 +1,14 @@
+@startuml
+actor client
+client -> Stub:
+Stub -> ClientCalls: blockingUnaryCall
+ClientCalls -> Channel: newCall
+ClientCalls <-- Channel: ClientCall
+ClientCalls -> ClientCall: startCall
+ClientCall -> ClientTransport: newStream
+ClientCall -> ClientStream: start
+ClientCall -> ClientStream: request
+ClientCall -> ClientStream: sendMessage
+ClientCall -> ClientStream: halfClose
+
+@enduml

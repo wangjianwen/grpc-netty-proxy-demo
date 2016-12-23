@@ -1,0 +1,32 @@
+@startuml
+
+abstract class Channel{
+    public abstract <RequestT, ResponseT> ClientCall<RequestT, ResponseT> newCall(
+          MethodDescriptor<RequestT, ResponseT> methodDescriptor, CallOptions callOptions);
+}
+
+abstract class ManagedChannel{
+     public abstract ManagedChannel shutdown();
+     public abstract boolean isShutdown();
+     public abstract boolean isTerminated();
+     public abstract ManagedChannel shutdownNow();
+     public abstract boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException;
+}
+
+class ManagedChannelImpl
+class RealChannel
+
+Channel <|-- ManagedChannel
+Channel <|-- RealChannel
+Channel <|-- InterceptorChannel
+ManagedChannel <|-- ManagedChannelImpl
+
+Channel -> ClientCall
+abstract class ClientCall<ReqT, RespT> {
+    public abstract void start(Listener<RespT> responseListener, Metadata headers);
+    public abstract void request(int numMessages);
+    public abstract void cancel(@Nullable String message, @Nullable Throwable cause);
+    public abstract void halfClose();
+    public abstract void sendMessage(ReqT message);
+}
+@enduml

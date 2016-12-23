@@ -1,0 +1,8 @@
+@startuml
+
+interface ClientTransportProvider {
+    ClientTransport get(CallOptions callOptions);
+}
+
+
+@enduml

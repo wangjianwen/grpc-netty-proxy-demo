@@ -1,0 +1,19 @@
+@startuml
+
+
+interface ChannelHandler
+interface ChannelInboundHandler
+interface ChannelOutboundHandler
+interface ChannelDuplexHandler
+class ChannelInboundHandlerAdapter
+class ChannelOutboundHandlerAdapter
+class ChannelDuplexHandler
+
+ChannelHandler <|-- ChannelInboundHandler
+ChannelHandler <|-- ChannelOutboundHandler
+ChannelInboundHandler <|-- ChannelInboundHandlerAdapter
+ChannelOutboundHandler <|-- ChannelOutboundHandlerAdapter
+ChannelInboundHandlerAdapter <|-- ChannelDuplexHandler
+ChannelOutboundHandler <|-- ChannelDuplexHandler
+ChannelDuplexHandler <|-- Http2Codec
+@enduml

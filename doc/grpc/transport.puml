@@ -1,0 +1,25 @@
+@startuml
+
+interface ClientTransport {
+     ClientStream newStream(MethodDescriptor<?, ?> method, Metadata headers, CallOptions callOptions);
+     ClientStream newStream(MethodDescriptor<?, ?> method, Metadata headers);
+}
+
+interface ManagedClientTransport{
+    Runnable start(Listener listener);
+    void shutdown();
+    void shutdownNow(Status reason);
+}
+
+interface ConnectionClientTransport{
+    Attributes getAttrs();
+}
+
+ClientTransport <|-- ManagedClientTransport
+ClientTransport <|-- FailingClientTransport
+ManagedClientTransport <|-- ConnectionClientTransport
+ConnectionClientTransport <|-- NettyClientTransport
+ConnectionClientTransport <|-- InProcessTransport
+ConnectionClientTransport <|-- ForwardingConnectionClientTransport
+ManagedClientTransport <|-- DelayedClientTransport
+@enduml

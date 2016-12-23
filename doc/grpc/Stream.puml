@@ -1,0 +1,25 @@
+@startuml
+
+interface Stream
+interface ClientStream
+abstract class AbstractClientStream
+abstract class Http2ClientStream
+abstract class NettyClientStream
+
+abstract class AbstractStream2
+abstract class AbstractServerStream
+class NettyServerStream
+
+Stream <|-- ClientStream
+Stream <|-- AbstractStream2
+ClientStream <|-- AbstractClientStream
+AbstractStream2 <|-- AbstractServerStream
+AbstractServerStream <|-- NettyServerStream
+
+ClientStream <|-- DelayedStream
+DelayedStream <|-- PendingStream
+
+AbstractClientStream <|-- Http2ClientStream
+Http2ClientStream <|-- NettyClientStream
+
+@enduml

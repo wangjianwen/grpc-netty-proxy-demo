@@ -4,11 +4,19 @@ interface Channel{
     ChannelPipeline pipeline();
     EventLoop eventLoop();
     ChannelFuture connect(SocketAddress remoteAddress);
-    ChannelFuture connect(SocketAddress remoteAddress, SocketAddress localAddress);
     Channel read();
     ChannelFuture write(Object msg);
     ChannelFuture writeAndFlush(Object msg);
 }
+
+Channel <|-- AbstractChannel
+AbstractChannel <|-- AbstractOioChannel
+AbstractChannel <|-- AbstractNioChannel
+AbstractNioChannel <|-- AbstractNioMessageChannel
+AbstractNioChannel <|-- AbstractNioByteChannel
+AbstractNioMessageChannel <|-- NioServerSocketChannel
+AbstractNioByteChannel <|-- NioSocketChannel
+
 
 interface ChannelPipeline {
     ChannelPipeline addFirst(String name, ChannelHandler handler);

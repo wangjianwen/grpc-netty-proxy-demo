@@ -3,7 +3,7 @@ package com.netty.grpc.proxy.demo.client;
 
 
 public class Application {
-    private static int proxyPort = 8443;
+    private static int proxyPort = 8444;
     public static void main(String[] args) throws Exception {
 
 

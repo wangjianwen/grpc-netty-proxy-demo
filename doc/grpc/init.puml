@@ -1,0 +1,12 @@
+@startuml
+actor client
+
+client -> ManagedChannelBuilder:build
+ManagedChannelBuilder -> ClientTransportFactory: new
+ManagedChannelBuilder <-- ClientTransportFactory
+ManagedChannelBuilder -> NameResolver.Factory : new
+ManagedChannelBuilder <-- NameResolver.Factory
+ManagedChannelBuilder -> ManagedChannelImpl:new
+
+
+@enduml
